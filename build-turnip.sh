@@ -3,16 +3,53 @@
 # Define colors for terminal output
 green='\033[0;32m'
 red='\033[0;31m'
+blue='\033[0;34m'
+nocolor='\033[0m'
+tbold=$(tput bold)
+tnormal=$(tput sgr0)
+
+for ARGUMENT in "$@"
+do
+   KEY=$(echo $ARGUMENT | cut -f1 -d=)
+
+   KEY_LENGTH=${#KEY}
+   VALUE="${ARGUMENT:$KEY_LENGTH+1}"
+
+   export "$KEY"="$VALUE"
+done
+
+if [[ "$1" != "build"  ]]; then
+    echo -e "${green}${tbold}Mesa Turnip Driver Builder ${tnormal}${green}$nocolor"
+    echo "Original code by Shankar Vallabhan A (https://github.com/v3kt0r-87/Mesa-Turnip-Builder)"
+    echo
+    echo "Usage:"
+    echo -e "${blue}$0 build ${nocolor}"
+    echo "      Build Turnip drivers by downloading Android NDK and Mesa from the internet."
+    echo
+    echo -e "${blue}$0 build NDK_BIN_DIR=${green}\"/${nocolor}FULL_PATH_TO_YOUR_NDK${green}/toolchains/llvm/prebuilt/${nocolor}YOUR_PLATFORM${green}/bin\"${nocolor}"
+    echo "      Build using already installed Android NDK instead of downloading."
+    echo
+    exit
+fi
+
+# Define colors for terminal output
+green='\033[0;32m'
+red='\033[0;31m'
 nocolor='\033[0m'
 
-# Define Android NDK version and download URL
-ndkdir="android-ndk-r29-beta2"
-ndkver="https://dl.google.com/android/repository/${ndkdir}-linux.zip"
-sdkver="34"
+mtdb_echo() {
+  echo -e "${nocolor}${tbold}[${blue}Turnip Builder${nocolor}${tbold}]${nocolor} $@"
+}
+
+mtdb_fatal() {
+    mtdb_echo "${nocolor}${tbold}[${red}FATAL${nocolor}${tbold}]${nocolor} ${red}$@"
+    exit -1
+}
 
 # Define Mesa version and download URL
 mesadir="mesa-mesa-25.1.4"
 mesaver="https://gitlab.freedesktop.org/mesa/mesa/-/archive/mesa-25.1.4/${mesadir}.zip"
+ndk_sdkver="34" # Needed for mesa-mesa-25.1.4
 
 # Define working directories
 workdir="$(pwd)/turnip_workdir"         # Base directory for all operations
@@ -22,65 +59,102 @@ DRIVER_FILE="vulkan.turnip.so"          # Output Vulkan Driver (emulator)
 META_FILE="meta.json"                   # Metadata
 
 ZIP_FILE_MAGISK="Turnip-25.1.4-MAGISK-KSU.zip"
-ZIP_FILE_EMULATOR="Turnip-25.1.4-EMULATOR.zip" 
+ZIP_FILE_EMULATOR="Turnip-25.1.4-EMULATOR.zip"
 
 # List of required packages to build the Turnip driver
-deps="meson ninja patchelf unzip curl pip flex bison zip glslang"
-clear
+deps="meson ninja patchelf unzip curl flex bison zip glslang"
 
-echo "Checking system for required dependencies..."
+mtdb_echo "Checking system for required dependencies..."
+
+deps_fail_explanation="${red}- Please ensure you have \"$nocolor$deps$red\" and \"${nocolor}pip$red\" (or \"${nocolor}pip3$red\") utilities installed on your system. $nocolor"
 
 # Check for required dependencies 
 for deps_chk in $deps; do
-
-    sleep 0.5
+    sleep 0.2
     if command -v "$deps_chk" >/dev/null 2>&1; then
-        echo -e "$green - $deps_chk found $nocolor"
+        mtdb_echo "${green}- $deps_chk found $nocolor"
     else
-        echo -e "$red - $deps_chk not found, cannot continue. $nocolor"
-        deps_missing=1
-
-        if [ "$deps_missing" == "1" ]; then
-            echo "Missing dependencies, installing them now..." $'\n'
-            sudo apt install -y meson patchelf unzip curl python3-pip flex bison zip python3-mako glslang-tools vulkan-tools python-is-python3 &> /dev/null
-        fi
+        mtdb_echo "${red}- $deps_chk not found, cannot continue. $nocolor"
+        mtdb_echo "$deps_fail_explanation"
+        exit -1
     fi
 done
 
-sleep 1.5
-clear
 
-# Clean work directory if it exists
-if [ -d "$workdir" ]; then
-    echo "Work directory already exists. Cleaning before proceeding..." $'\n'
-    rm -rf "$workdir"
-    sleep 2
+# Check if we have pip installed
+pip_exec="pip"
+sleep 0.5
+if command -v "$pip_exec" >/dev/null 2>&1; then
+    mtdb_echo "${green}- $pip_exec found $nocolor"
+else
+    pip_exec="pip3"
+    if command -v "$pip_exec" >/dev/null 2>&1; then
+        mtdb_echo "${green}- $pip_exec found $nocolor"
+    else
+            mtdb_echo "$red - Neither \"${nocolor}pip$red\" nor \"${nocolor}pip3$red\" executale are found, cannot continue. $nocolor"
+            mtdb_echo "$deps_fail_explanation"
+        exit -1
+    fi
 fi
 
-echo "Creating and entering the work directory..." $'\n'
-mkdir -p "$workdir" && cd "$_"
+mtdb_echo "Installing Python dependencies for Mesa..."
+eval "$pip_exec install mako packaging pyyaml" || mtdb_fatal "Failed to install required Python packages. If your system does not support installing global packages, can enter Poetry virtual environment via ${tbold}eval \"\$(poetry env activate)\"${tnormal}$red before executing this script to install Python packages locally."
+sleep 0.2
 
-# Download Android NDK
-echo "Downloading Android NDK..." $'\n'
-curl $ndkver --output "$ndkdir".zip &> /dev/null
+# TODO: Uncomment
+cd $workdir
+# # Clean work directory if it exists
+# if [ -d "$workdir" ]; then
+#     mtdb_echo "Work directory already exists. Cleaning before proceeding..."
+#     rm -rf "$workdir"
+#     sleep 0.2
+# fi
+#
+# mtdb_echo "Creating and entering the work directory..."
+# mkdir -p "$workdir" && cd "$_"
 
-clear
+# Define Android NDK binary path and version
+ndk_bin=""
+if [[ -n "$NDK_BIN_DIR" ]]; then
+    mtdb_echo "Skipping downloading Android NDK..."
+    ndk_bin="$NDK_BIN_DIR"
 
-echo "Extracting Android NDK..." $'\n'
-unzip "$ndkdir".zip &> /dev/null
+    mtdb_echo "Checking correctness of supplied NDK_BIN_DIR..."
+    test_cmd="aarch64-linux-android${ndk_sdkver}-clang"
+    if command -v "$ndk_bin/$test_cmd" >/dev/null 2>&1; then
+        mtdb_echo "${green}- found SDK $ndk_sdkver executables in NDK_BIN_DIR$nocolor"
+    else
+        mtdb_echo "${red}- $test_cmd is not found in NDK_BIN_DIR=\"$NDK_BIN_DIR\"$nocolor"
+        mtdb_echo "${red}  Check that NDK_BIN_DIR is pointing to Android NDK bin diretory"
+        mtdb_echo "${red}  (e. g. \"/FULL_PATH_TO_YOUR_NDK/toolchains/llvm/prebuilt/YOUR_PLATFORM/bin\"),"
+        mtdb_echo "${red}  and bin directory has utilities for SDK version ${tbold}$ndk_sdkver${tnormal}${red} (needed for $mesadir)"
+        echo
+        exit -1
+    fi
+else
+    ndkdir="android-ndk-r29-beta2"
+    ndkver="https://dl.google.com/android/repository/${ndkdir}-linux.zip"
 
-# Download Mesa source
-echo "Downloading Latest Mesa source ..." $'\n'
-curl $mesaver --output "$mesadir".zip &> /dev/null
+    # Download Android NDK
+    mtdb_echo "Downloading Android NDK..." $'\n'
+    curl $ndkver --output "$ndkdir".zip
 
-clear
+    mtdb_echo "Extracting Android NDK..." $'\n'
+    unzip "$ndkdir".zip &> /dev/null
 
-echo "Extracting Mesa source..." $'\n'
-unzip "$mesadir".zip &> /dev/null
+    ndk_bin="$workdir/$ndkdir/toolchains/llvm/prebuilt/linux-x86_64/bin"
+fi
+mtdb_echo "Using Android NDK binaries from \"$ndk_bin\""
+
+# TODO: Uncomment
 cd $mesadir
-
-# Set NDK Clang bin directory
-ndk_bin="$workdir/$ndkdir/toolchains/llvm/prebuilt/linux-x86_64/bin"
+# # Download Mesa source
+# mtdb_echo "Downloading Latest Mesa source..."
+# curl $mesaver --output "$mesadir".zip
+#
+# mtdb_echo "Extracting Mesa source..."
+# unzip "$mesadir".zip &> /dev/null
+# cd $mesadir
 
 # Set toolchain variables
 export CC=clang
@@ -102,13 +176,13 @@ ln -sf "$ndk_bin/clang++" /tmp/fake-cc/c++
 # Prepend both fake-cc and NDK bin to PATH
 export PATH="/tmp/fake-cc:$ndk_bin:$PATH"
 
-echo "Creating Meson cross file..." $'\n'
+mtdb_echo "Creating Meson cross file..."
 
 cat <<EOF >"android-aarch64.txt"
 [binaries]
 ar = '$ndk_bin/llvm-ar'
-c = ['ccache', '$ndk_bin/aarch64-linux-android$sdkver-clang', '-O2']
-cpp = ['ccache', '$ndk_bin/aarch64-linux-android$sdkver-clang++', '-O2', '--start-no-unused-arguments', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '-static-libstdc++', '--end-no-unused-arguments', '-Wno-error=c++11-narrowing']
+c = ['ccache', '$ndk_bin/aarch64-linux-android${ndk_sdkver}-clang', '-O2']
+cpp = ['ccache', '$ndk_bin/aarch64-linux-android${ndk_sdkver}-clang++', '-O2', '--start-no-unused-arguments', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '-static-libstdc++', '--end-no-unused-arguments', '-Wno-error=c++11-narrowing']
 c_ld = '$ndk_bin/ld.lld'
 cpp_ld = '$ndk_bin/ld.lld'
 strip = '$ndk_bin/aarch64-linux-android-strip'
@@ -135,26 +209,26 @@ cpu = 'x86_64'
 endian = 'little'
 EOF
 
-echo "Generating build files..." $'\n'
+mtdb_echo "Generating build files..."
 CC=clang CXX=clang++ meson setup build-android-aarch64 \
     --cross-file "$workdir/$mesadir/android-aarch64.txt" \
     --native-file "$workdir/$mesadir/native.txt" \
     -Dbuildtype=release \
     -Dplatforms=android \
-    -Dplatform-sdk-version="$sdkver" \
+    -Dplatform-sdk-version="${ndk_sdkver}" \
     -Dandroid-stub=true \
     -Dgallium-drivers= \
     -Dvulkan-drivers=freedreno \
     -Dfreedreno-kmds=kgsl \
     -Db_lto=true \
     -Degl=disabled \
-    -Dstrip=true &> $workdir/meson_log
+    -Dstrip=true || mtdb_fatal "Failed to generate Meson build files. Check the error above."
 
 # Compile build files using Ninja
-echo "Compiling build files..." $'\n'
-ninja -C build-android-aarch64 &> "$workdir"/ninja_log
+mtdb_echo "Compiling build files..."
+ninja -C build-android-aarch64 || mtdb_fatal "Failed to compile Mesa. Check the error above."
 
-echo "Using patchelf to match .so name..." $'\n'
+mtdb_echo "Using patchelf to match .so name..."
 cp "$workdir"/"$mesadir"/build-android-aarch64/src/freedreno/vulkan/libvulkan_freedreno.so "$workdir"
 cd "$workdir"
 

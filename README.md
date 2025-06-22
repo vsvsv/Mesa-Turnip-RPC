@@ -1,63 +1,51 @@
-# Freedreno Turnip Builder 🚀
+# Mesa Freedreno/Turnip Driver Builder
 
-## Stable / RC Mesa  + Android NDK <br> Use this build for stability ✅ 
+Simple Bash script that aims to build a turnip driver for **Magisk/KernelSU** or **emulators**.
 
-Simple Bash script that aims to build a turnip driver for **MAGISK/KERNELSU or EMULATOR**
+## Build instructions
 
-# What's New : 🔥
+Ensure you have the following commands available in your system:
 
-**[Click Here](//github.com/v3kt0r-87/Mesa-Turnip-Builder/blob/main/UPDATES.md)**
+* `meson`
+* `ninja`
+* `patchelf`
+* `unzip`
+* `curl`
+* `flex`
+* `bison` (**NOTE**: Bison should be version 2.4 or later, check with `bison --version`. MacOS by default has old Bison 2.3 version, so install newer with `brew install bison` and `brew link --force bison`).
+* `zip`
+* `glslang`
+* `pip` or `pip3`. This script install some Python packages globally by default. If you dont want this behavior, you can execute script from Poetry virtual environment to install packages locally (see below).
+
+If your system does not allow to install system-wide Python packages (e. g. Python installed via Homebrew), or you want to install them locally, the build script should be executed from _virtualenv_. It can be done using [Poetry](https://python-poetry.org/). Install poetry on your system, then do the following from the project root:
+
+```bash
+poetry install
+eval "$(poetry env activate)"
+```
+
+To start build process just type
+
+```
+./build-turnip.sh build
+```
+
+You can also specify custom options for the build script (for example, custom Android NDK). To see all availabe options type the following:
+
+```
+./build-turnip.sh help
+```
+
+
+# Credits
+
+### This software is based on the amazing work of the following developers:
  
-## How to Build Locally 🤔
+ **[@v3kt0r-87](//github.com/v3kt0r-87)** for creating the original [Mesa-Turnip-Builder](//github.com/v3kt0r-87/Mesa-Turnip-Builder) script.
 
-Simply clone this repo and use **BASH** to build 
-
-``` 
-bash build-turnip.sh
-``` 
-
-Check [Notes](//github.com/v3kt0r-87/Mesa-Turnip-Builder?tab=readme-ov-file#notes-) Section below for more info 
-
-# App Compatibility
-
-| Name                                            | Status | Notes                                                                                                                     |
-|-------------------------------------------------|--------|---------------------------------------------------------------------------------------------------------------------------|
-| 3D Mark                                         | ✅     |                                                                                                                           |
-| GRID™ Autosport                                 | ✅     | Tested by [V3KT0R-87](//github.com/V3KT0R-87)<br>Working.(60fps)                                                          |
-| SpongeBob SquarePants Battle For Bikini Bottom  | ✅     | Tested by [V3KT0R-87](//github.com/V3KT0R-87)<br>Working,(30 - 45 fps)                                                    |
-| Carx Street                                     | ✅     | Tested by [V3KT0R-87](//github.com/V3KT0R-87)<br>Working,(30 - 45 fps)                                                    |
-| Dolphin Emulator                                | ✅     | Tested by [V3KT0R-87](//github.com/V3KT0R-87)<br>Working.                                                                 |
-| PPSSPP                                          | ✅     | Tested by [V3KT0R-87](//github.com/V3KT0R-87)<br>Working.                                                                 |
-| EggNS                                           | ✅     | Tested by [V3KT0R-87](//github.com/V3KT0R-87)<br>Working.                                                                 |
-| ANGLE (com.android.angle)                       | ✅     |                                                                                                                           |
-| GTA Triology-Definitive Edition                 | ✅     | Tested by [@Ryder_7777](//t.me/Ryder_7777)<br>Working,Poor Performance.                                                   |
-| Call of Duty WarZone Mobile                     | ✅     | Tested by [@SeniorFurry](//t.me/SeniorFurry)<br>Working,Texture Bugs,Poor Performance.                                    |
-| Hitman Blood Money : Reprisal                   | ✅     | Tested by [@V3KT0R-87](//github.com/V3KT0R-87)<br>Working, 60 fps Medium Graphics.                                        |
-
-
-### NOTES :
-
-### Important : Android 14 (SDK 34) is needed for Full Vulkan 1.4 support
-
-## Please use either Ubuntu / Debian based distro to build 
-```Ubuntu 22.04.4 LTS or later```
-
-**MAKE SURE YOU HAVE A STABLE INTERNET CONNECTION BEFORE PROCEEDING**
-
-**USE A VPN IF YOUR ISP THROTTLES YOUR SPEED**
-
-Make sure your Android version is ```13``` or above otherwise you wont be able to install 
-
-Make sure you have the latest **MAGISK / KERNELSU** before installing
-
-
-# CREDITS 🙏
-
-### This project wont be possible without the help of these amazing people below :
+ **[@MrMiy4mo](//github.com/ilhan-athn7)** for creating the [freedreno_turnip-CI](https://github.com/ilhan-athn7/freedreno_turnip-CI) script.
  
- **[@MrMiy4mo](//github.com/ilhan-athn7)** for creating the turnip build script and letting me modify and learn from it. 
- 
- **[@Mesa3D Team](//gitlab.freedesktop.org/mesa/mesa)** for giving us such amazing drivers so that we can further improve our device performance.
+ **[@Mesa3D Team](//gitlab.freedesktop.org/mesa/mesa)** for creating an open source drivers for Adreno.
 
  **[Adreno Driver Support Group](//t.me/adreno_driver)** for testing and sharing benchmarks.
 

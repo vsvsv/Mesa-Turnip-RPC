@@ -1,0 +1,19 @@
+[project]
+name = "mesa-turnip-rpc"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "vsvsv",email = "vsevolodplatunov@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "mako (>=1.3.10,<2.0.0)",
+    "packaging (>=25.0,<26.0)",
+    "pyyaml (>=6.0.2,<7.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
