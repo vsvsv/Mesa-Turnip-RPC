@@ -101,17 +101,15 @@ mtdb_echo "Installing Python dependencies for Mesa..."
 eval "$pip_exec install mako packaging pyyaml" || mtdb_fatal "Failed to install required Python packages. If your system does not support installing global packages, can enter Poetry virtual environment via ${tbold}eval \"\$(poetry env activate)\"${tnormal}$red before executing this script to install Python packages locally."
 sleep 0.2
 
-# TODO: Uncomment
-cd $workdir
-# # Clean work directory if it exists
-# if [ -d "$workdir" ]; then
-#     mtdb_echo "Work directory already exists. Cleaning before proceeding..."
-#     rm -rf "$workdir"
-#     sleep 0.2
-# fi
-#
-# mtdb_echo "Creating and entering the work directory..."
-# mkdir -p "$workdir" && cd "$_"
+# Clean work directory if it exists
+if [ -d "$workdir" ]; then
+    mtdb_echo "Work directory already exists. Cleaning before proceeding..."
+    rm -rf "$workdir"
+    sleep 0.2
+fi
+
+mtdb_echo "Creating and entering the work directory..."
+mkdir -p "$workdir" && cd "$_"
 
 # Define Android NDK binary path and version
 ndk_bin=""
@@ -146,15 +144,13 @@ else
 fi
 mtdb_echo "Using Android NDK binaries from \"$ndk_bin\""
 
-# TODO: Uncomment
+# Download Mesa source
+mtdb_echo "Downloading Latest Mesa source..."
+curl $mesaver --output "$mesadir".zip
+
+mtdb_echo "Extracting Mesa source..."
+unzip "$mesadir".zip &> /dev/null
 cd $mesadir
-# # Download Mesa source
-# mtdb_echo "Downloading Latest Mesa source..."
-# curl $mesaver --output "$mesadir".zip
-#
-# mtdb_echo "Extracting Mesa source..."
-# unzip "$mesadir".zip &> /dev/null
-# cd $mesadir
 
 # Set toolchain variables
 export CC=clang
